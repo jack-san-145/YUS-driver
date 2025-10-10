@@ -51,10 +51,9 @@ TaskManager.defineTask(LOCATION_TASK_NAME, ({ data, error }) => {
     if (global.wsClient && global.wsClient.readyState === 1) {
       locations.forEach(loc => {
         global.wsClient.send(JSON.stringify({
-          latitude: parseFloat(loc.coords.latitude.toFixed(6)),
-          longitude: parseFloat(loc.coords.longitude.toFixed(6)),
-          speed: loc.coords.speed ? parseFloat(loc.coords.speed.toFixed(2)) : 0,
-          timestamp: new Date().toISOString(),
+          latitude: loc.coords.latitude.toFixed(6),
+          longitude: loc.coords.longitude.toFixed(6),
+          speed: loc.coords.speed.toFixed(2)
         }));
       });
     }
@@ -81,49 +80,49 @@ const HomeScreen = ({ navigation }) => {
 
   // ----------------- WebSocket -----------------
   const initializeWebSocket = async () => {
-    try {
-      const sessionId = await getSessionId();
-      if (!sessionId) {
-        navigation.replace('LoginScreen');
-        return;
-      }
-
-      const ws = new W3CWebSocket('wss://yus.kwscloud.in/driver-ws', null, null, {
-        Authorization: sessionId,
-      });
-
-      ws.onopen = () => {
-        console.log('✅ WebSocket connected');
-        global.wsClient = ws;
-        setIsWebSocketConnected(true);
-        if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
-      };
-
-      ws.onclose = (event) => {
-        console.log('⚠ WebSocket disconnected:', event.code);
-        setIsWebSocketConnected(false);
-        if (sharing) {
-          reconnectTimeoutRef.current = setTimeout(() => initializeWebSocket(), 3000);
-        }
-      };
-
-      ws.onerror = (error) => {
-        console.error('❌ WebSocket error:', error);
-        setIsWebSocketConnected(false);
-      };
-
-      ws.onmessage = (message) => {
-        try {
-          const data = JSON.parse(message.data);
-          console.log('Received message:', data);
-        } catch {
-          console.log('Raw message:', message.data);
-        }
-      };
-    } catch (err) {
-      console.error('WebSocket initialization failed:', err);
+  try {
+    const sessionId = await getSessionId();
+    if (!sessionId) {
+      navigation.replace('LoginScreen');
+      return;
     }
-  };
+
+    // Append session_id as query parameter
+    const ws = new W3CWebSocket(`wss://yus.kwscloud.in/yus/driver-ws?session_id=${sessionId}`);
+
+    ws.onopen = () => {
+      console.log('✅ WebSocket connected');
+      global.wsClient = ws;
+      setIsWebSocketConnected(true);
+      if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
+    };
+
+    ws.onclose = (event) => {
+      console.log('⚠ WebSocket disconnected:', event.code);
+      setIsWebSocketConnected(false);
+      if (sharing) {
+        reconnectTimeoutRef.current = setTimeout(() => initializeWebSocket(), 3000);
+      }
+    };
+
+    ws.onerror = (error) => {
+      console.error('❌ WebSocket error:', error);
+      setIsWebSocketConnected(false);
+    };
+
+    ws.onmessage = (message) => {
+      try {
+        const data = JSON.parse(message.data);
+        console.log('Received message:', data);
+      } catch {
+        console.log('Raw message:', message.data);
+      }
+    };
+  } catch (err) {
+    console.error('WebSocket initialization failed:', err);
+  }
+};
+
 
   // ----------------- Fetch Bus -----------------
   const fetchAllottedBus = async () => {
@@ -160,62 +159,69 @@ const HomeScreen = ({ navigation }) => {
     }
   };
 
-  // ----------------- Start Sharing -----------------
-  const toggleSharing = async () => {
-    if (sharing) {
-      // Stop foreground
-      if (subscriptionRef.current) {
-        subscriptionRef.current.remove();
-        subscriptionRef.current = null;
-      }
-      // Stop background
-      await Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
-      setSharing(false);
-      setLocation(null);
-      return;
+
+
+  // ----------------- Start / Stop Sharing -----------------
+const toggleSharing = async () => {
+  if (sharing) {
+    // Stop foreground tracking
+    if (subscriptionRef.current) {
+      subscriptionRef.current.remove();
+      subscriptionRef.current = null;
     }
 
-    // Request permissions
-    let { status: fgStatus } = await Location.requestForegroundPermissionsAsync();
-    if (fgStatus !== 'granted') return Alert.alert('Enable location permissions');
+    // Stop background tracking
+    await Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
 
-    const { status: bgStatus } = await Location.requestBackgroundPermissionsAsync();
-    if (bgStatus !== 'granted') return Alert.alert('Enable background location');
+    setSharing(false);
+    setLocation(null);
+    return;
+  }
 
-    // Start foreground tracking
-    const sub = await Location.watchPositionAsync(
-      { accuracy: Location.Accuracy.High, timeInterval: 2000, distanceInterval: 5 },
-      (loc) => {
-        setLocation(loc);
-        if (busData) {
-          sendLocation({
-            latitude: parseFloat(loc.coords.latitude.toFixed(6)),
-            longitude: parseFloat(loc.coords.longitude.toFixed(6)),
-            speed: loc.coords.speed ? parseFloat(loc.coords.speed.toFixed(2)) : 0,
-            bus_id: busData.bus_id,
-            route_id: busData.route_id,
-            timestamp: new Date().toISOString(),
-          });
-        }
-      }
-    );
-    subscriptionRef.current = sub;
+  // ----------------- Request Permissions -----------------
+  const { status: fgStatus } = await Location.requestForegroundPermissionsAsync();
+  if (fgStatus !== 'granted') return Alert.alert('Enable location permissions');
 
-    // Start background tracking
-    await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
+  const { status: bgStatus } = await Location.requestBackgroundPermissionsAsync();
+  if (bgStatus !== 'granted') return Alert.alert('Enable background location');
+
+  // ----------------- Start Foreground Tracking -----------------
+  const sub = await Location.watchPositionAsync(
+    {
       accuracy: Location.Accuracy.High,
-      timeInterval: 2000,
-      distanceInterval: 5,
-      showsBackgroundLocationIndicator: true,
-      foregroundService: {
-        notificationTitle: 'Drive Tracker',
-        notificationBody: 'Sharing your location in the background',
-        notificationColor: '#4CAF50',
-      },
-    });
+      timeInterval: 5000,  // 5 seconds
+      distanceInterval: 0, // send even if not moved
+    },
+    (loc) => {
+      setLocation(loc);
 
-    setSharing(true);
-  };
+      if (busData && global.wsClient && global.wsClient.readyState === 1) {
+        global.wsClient.send(JSON.stringify({
+          latitude: loc.coords.latitude.toFixed(6),
+          longitude: loc.coords.longitude.toFixed(6),
+          speed: loc.coords.speed.toFixed(2),
+        }));
+      }
+    }
+  );
+  subscriptionRef.current = sub;
+
+  // ----------------- Start Background Tracking -----------------
+  await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
+    accuracy: Location.Accuracy.High,
+    timeInterval: 5000,  // 5 seconds
+    distanceInterval: 0, // even if stationary
+    showsBackgroundLocationIndicator: true,
+    foregroundService: {
+      notificationTitle: 'Drive Tracker',
+      notificationBody: 'Sharing your location in the background',
+      notificationColor: '#4CAF50',
+    },
+  });
+
+  setSharing(true);
+};
+
 
   // ----------------- Logout -----------------
   const handleLogout = async () => {

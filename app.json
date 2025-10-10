@@ -12,14 +12,6 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "ios": {
-      "supportsTablet": true,
-      "infoPlist": {
-        "UIBackgroundModes": ["location"],
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "We need your location to share your bus location even when the app is in the background.",
-        "NSLocationWhenInUseUsageDescription": "We need your location to share your bus location while using the app."
-      }
-    },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
@@ -30,13 +22,22 @@
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
         "ACCESS_BACKGROUND_LOCATION"
-      ]
-    },
-    "web": {
-      "favicon": "./assets/favicon.png"
+      ],
+      "foregroundService": {
+        "notificationTitle": "Drive Tracker Active",
+        "notificationBody": "YUS Driver is sharing your location in the background.",
+        "notificationColor": "#4CAF50"
+      }
     },
     "plugins": [
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-location",
+        {
+          "isAndroidForegroundServiceEnabled": true,
+          "locationAlwaysAndWhenInUsePermission": "Allow YUS Driver to access your location at all times so we can share your live bus position."
+        }
+      ]
     ]
   }
 }
