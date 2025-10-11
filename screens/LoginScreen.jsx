@@ -146,10 +146,8 @@ const LoginScreen = ({ navigation }) => {
         >
           {/* Header */}
           <View style={styles.headerContainer}>
-            <View style={styles.iconCircle}>
-              <Text style={styles.iconText}>🚗</Text>
-            </View>
-            <Text style={styles.title}>Driver Portal</Text>
+              <Text style={styles.iconText}>🚍</Text>
+            <Text style={styles.title}>YUS Driver</Text>
             <Text style={styles.subtitle}>Sign in to continue</Text>
           </View>
 
@@ -259,20 +257,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', 
     marginBottom: 36, 
   }, 
-  iconCircle: { 
-    width: 80, 
-    height: 80, 
-    borderRadius: 40, 
-    backgroundColor: '#e8c513e7', 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    marginBottom: 16, 
-    shadowColor: '#e8c513e7', 
-    shadowOffset: { width: 0, height: 4 }, 
-    shadowOpacity: 0.3, 
-    shadowRadius: 8, 
-    elevation: 8, 
-  }, 
+  
   iconText: { 
     fontSize: 36, 
   }, 
