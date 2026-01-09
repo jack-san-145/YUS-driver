@@ -12,6 +12,16 @@ import {
   Platform,
   Animated,
 } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+
+// Common Auth Header Component
+const AuthHeader = ({ title, subtitle }) => (
+  <View style={styles.header}>
+    <Text style={styles.title}>{title}</Text>
+    <Text style={styles.subtitle}>{subtitle}</Text>
+  </View>
+);
+
 
 const VerifyOtpScreen = ({ route, navigation }) => {
   const { driverId, email } = route.params;
@@ -21,6 +31,9 @@ const VerifyOtpScreen = ({ route, navigation }) => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const cleanPassword = password.trim();
+  const cleanConfirmPassword = confirmPassword.trim();
+
 
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -31,7 +44,9 @@ const VerifyOtpScreen = ({ route, navigation }) => {
   const buttonScaleAnim = useRef(new Animated.Value(1)).current;
 
   // Regex patterns for validation
-  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+ const passwordRegex =
+/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&\-])[A-Za-z\d@$!%*?&\-]{8,}$/;
+
   const otpRegex = /^\d{4,8}$/;
 
   useEffect(() => {
@@ -50,48 +65,16 @@ const VerifyOtpScreen = ({ route, navigation }) => {
     ]).start();
   }, []);
 
-  const handlePasswordFocus = () => {
-    Animated.timing(passwordBorderAnim, {
+  const handleFocus = (inputAnim) => {
+    Animated.timing(inputAnim, {
       toValue: 1,
       duration: 200,
       useNativeDriver: false,
     }).start();
   };
 
-  const handlePasswordBlur = () => {
-    Animated.timing(passwordBorderAnim, {
-      toValue: 0,
-      duration: 200,
-      useNativeDriver: false,
-    }).start();
-  };
-
-  const handleConfirmPasswordFocus = () => {
-    Animated.timing(confirmPasswordBorderAnim, {
-      toValue: 1,
-      duration: 200,
-      useNativeDriver: false,
-    }).start();
-  };
-
-  const handleConfirmPasswordBlur = () => {
-    Animated.timing(confirmPasswordBorderAnim, {
-      toValue: 0,
-      duration: 200,
-      useNativeDriver: false,
-    }).start();
-  };
-
-  const handleOtpFocus = () => {
-    Animated.timing(otpBorderAnim, {
-      toValue: 1,
-      duration: 200,
-      useNativeDriver: false,
-    }).start();
-  };
-
-  const handleOtpBlur = () => {
-    Animated.timing(otpBorderAnim, {
+  const handleBlur = (inputAnim) => {
+    Animated.timing(inputAnim, {
       toValue: 0,
       duration: 200,
       useNativeDriver: false,
@@ -126,13 +109,14 @@ const VerifyOtpScreen = ({ route, navigation }) => {
       return 'Password must be at least 8 characters long';
     }
 
-    if (!passwordRegex.test(password)) {
-      return 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character';
-    }
+   if (!passwordRegex.test(cleanPassword)) {
+  return 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character';
+}
 
-    if (password !== confirmPassword) {
-      return 'Passwords do not match';
-    }
+if (cleanPassword !== cleanConfirmPassword) {
+  return 'Passwords do not match';
+}
+
 
     return null;
   };
@@ -168,7 +152,7 @@ const VerifyOtpScreen = ({ route, navigation }) => {
         Alert.alert('Success', 'Password set successfully!', [
           {
             text: 'OK',
-            onPress: () => navigation.navigate('Login'),
+            onPress: () => navigation.navigate('LoginScreen'),
           },
         ]);
       } else if (data.status === 'invalid_otp') {
@@ -179,7 +163,7 @@ const VerifyOtpScreen = ({ route, navigation }) => {
         Alert.alert('Error', data.message || 'Failed to set password. Please try again.');
       }
     } catch (error) {
-      console.error('Verify OTP error:', error);
+      console.log('Verify OTP error:', error);
       Alert.alert('Error', 'Failed to connect to server. Please check your internet connection.');
     } finally {
       setLoading(false);
@@ -210,7 +194,7 @@ const VerifyOtpScreen = ({ route, navigation }) => {
         Alert.alert('Error', 'Failed to resend OTP. Please try again.');
       }
     } catch (error) {
-      console.error('Resend OTP error:', error);
+      console.log('Resend OTP error:', error);
       Alert.alert('Error', 'Failed to connect to server');
     } finally {
       setLoading(false);
@@ -219,17 +203,17 @@ const VerifyOtpScreen = ({ route, navigation }) => {
 
   const passwordBorderColor = passwordBorderAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ['#2a2a2a', '#e8c513e7'],
+    outputRange: ['#ddd', '#f9c107'],
   });
 
   const confirmPasswordBorderColor = confirmPasswordBorderAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ['#2a2a2a', '#e8c513e7'],
+    outputRange: ['#ddd', '#f9c107'],
   });
 
   const otpBorderColor = otpBorderAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ['#2a2a2a', '#e8c513e7'],
+    outputRange: ['#ddd', '#f9c107'],
   });
 
   const getPasswordStrength = () => {
@@ -249,262 +233,182 @@ const VerifyOtpScreen = ({ route, navigation }) => {
   const passwordStrength = getPasswordStrength();
 
   return (
-    <KeyboardAvoidingView 
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+  <KeyboardAvoidingView
+    style={styles.container}
+    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+  >
+    <Animated.View
+      style={[
+        styles.mainWrapper,
+        { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
+      ]}
     >
-      <ScrollView 
-        contentContainerStyle={styles.scrollContainer}
-        showsVerticalScrollIndicator={false}
-      >
-        <Animated.View 
-          style={[
-            styles.formContainer,
-            {
-              opacity: fadeAnim,
-              transform: [{ translateY: slideAnim }],
-            },
-          ]}
-        >
-          {/* Header Section */}
-          <View style={styles.headerContainer}>
-            <View style={styles.iconCircle}>
-              <Text style={styles.iconText}>✓</Text>
-            </View>
-            <Text style={styles.title}>Verify & Set Password</Text>
-            <Text style={styles.subtitle}>
-              Enter the code sent to your email
-            </Text>
+      {/* Header – NO ICON */}
+      <View style={styles.header}>
+        <Text style={styles.title}>Verify & Set Password</Text>
+        <Text style={styles.subtitle}>Enter the code sent to your email</Text>
+      </View>
+
+      {/* Card */}
+      <View style={styles.card}>
+        {/* Info */}
+        <View style={styles.infoSection}>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>DRIVER ID</Text>
+            <Text style={styles.infoValue}>{driverId}</Text>
           </View>
-
-          {/* Info Card */}
-          <View style={styles.infoCard}>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Driver ID:</Text>
-              <Text style={styles.infoValue}>{driverId}</Text>
-            </View>
-            <View style={styles.infoDivider} />
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Email:</Text>
-              <Text style={styles.infoValue}>{email}</Text>
-            </View>
+          <View style={styles.divider} />
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>EMAIL</Text>
+            <Text style={styles.infoValue}>{email}</Text>
           </View>
+        </View>
 
-          {/* OTP Input */}
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Verification Code</Text>
-            <Animated.View 
-              style={[
-                styles.inputWrapper,
-                { borderColor: otpBorderColor }
-              ]}
-            >
-              <Text style={styles.inputIcon}>🔑</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter 4-8 digit code"
-                placeholderTextColor="#666"
-                value={otp}
-                onChangeText={setOtp}
-                keyboardType="numeric"
-                maxLength={8}
-                onFocus={handleOtpFocus}
-                onBlur={handleOtpBlur}
-              />
-            </Animated.View>
-            {otp && !otpRegex.test(otp) && (
-              <Text style={styles.errorText}>⚠️ OTP must be 4-8 digits</Text>
-            )}
-          </View>
-          
-          {/* New Password Input */}
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>New Password</Text>
-            <Animated.View 
-              style={[
-                styles.inputWrapper,
-                { borderColor: passwordBorderColor }
-              ]}
-            >
-              <Text style={styles.inputIcon}>🔒</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter new password"
-                placeholderTextColor="#666"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPassword}
-                autoCapitalize="none"
-                onFocus={handlePasswordFocus}
-                onBlur={handlePasswordBlur}
-              />
-              <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                <Text style={styles.eyeIcon}>{showPassword ? '👁️' : '👁️‍🗨️'}</Text>
-              </TouchableOpacity>
-            </Animated.View>
-            {password && passwordStrength && (
-              <View style={styles.strengthContainer}>
-                <Text style={[styles.strengthText, { color: passwordStrength.color }]}>
-                  Strength: {passwordStrength.text}
-                </Text>
-              </View>
-            )}
-            <Text style={styles.helperText}>
-              • Min 8 characters • Uppercase • Lowercase • Number • Special char
-            </Text>
-          </View>
-
-          {/* Confirm Password Input */}
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Confirm Password</Text>
-            <Animated.View 
-              style={[
-                styles.inputWrapper,
-                { borderColor: confirmPasswordBorderColor }
-              ]}
-            >
-              <Text style={styles.inputIcon}>🔒</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Confirm new password"
-                placeholderTextColor="#666"
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                secureTextEntry={!showConfirmPassword}
-                autoCapitalize="none"
-                onFocus={handleConfirmPasswordFocus}
-                onBlur={handleConfirmPasswordBlur}
-              />
-              <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
-                <Text style={styles.eyeIcon}>{showConfirmPassword ? '👁️' : '👁️‍🗨️'}</Text>
-              </TouchableOpacity>
-            </Animated.View>
-            {confirmPassword && password !== confirmPassword && (
-              <Text style={styles.errorText}>⚠️ Passwords do not match</Text>
-            )}
-            {confirmPassword && password === confirmPassword && (
-              <Text style={styles.successText}>✓ Passwords match</Text>
-            )}
-          </View>
-
-          {/* Set Password Button */}
-          <Animated.View style={{ transform: [{ scale: buttonScaleAnim }] }}>
-            <TouchableOpacity
-              style={[styles.verifyButton, loading && styles.disabledButton]}
-              onPress={handleVerifyOtp}
-              disabled={loading}
-              activeOpacity={0.8}
-            >
-              {loading ? (
-                <View style={styles.loadingContainer}>
-                  <ActivityIndicator color="#0b0808" size="small" />
-                  <Text style={styles.loadingText}>Setting Password...</Text>
-                </View>
-              ) : (
-                <View style={styles.buttonContent}>
-                  <Text style={styles.verifyButtonText}>Set Password</Text>
-                  <Text style={styles.buttonIcon}>✓</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          </Animated.View>
-
-          {/* Resend OTP Button */}
-          <TouchableOpacity
-            style={styles.resendButton}
-            onPress={handleResendOtp}
-            disabled={loading}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.resendIcon}>↻</Text>
-            <Text style={styles.resendButtonText}>Resend Code</Text>
-          </TouchableOpacity>
-
-          {/* Back Button */}
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-            disabled={loading}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.backButtonIcon}>←</Text>
-            <Text style={styles.backButtonText}>Go Back</Text>
-          </TouchableOpacity>
-
-          {/* Footer */}
-          <Text style={styles.footerText}>
-            Your password will be encrypted and stored securely
-          </Text>
+        {/* OTP */}
+        <Text style={styles.label}>Verification Code</Text>
+        <Animated.View style={[styles.inputBox, { borderColor: otpBorderColor }]}>
+          <MaterialCommunityIcons name="key-outline" size={20} color="#999" />
+          <TextInput
+            style={styles.input}
+            placeholder="Enter 4-8 digit code"
+            value={otp}
+            keyboardType="numeric"
+            maxLength={8}
+            onChangeText={setOtp}
+            onFocus={() => handleFocus(otpBorderAnim)}
+            onBlur={() => handleBlur(otpBorderAnim)}
+          />
         </Animated.View>
-      </ScrollView>
-    </KeyboardAvoidingView>
-  );
+
+        {/* New Password */}
+        <Text style={styles.label}>New Password</Text>
+        <Animated.View style={[styles.inputBox, { borderColor: passwordBorderColor }]}>
+  <MaterialCommunityIcons name="lock-outline" size={20} color="#999" />
+
+  <TextInput
+    style={styles.input}
+    placeholder="Enter new password"
+    secureTextEntry={!showPassword}
+    value={password}
+    onChangeText={setPassword}
+    onFocus={() => handleFocus(passwordBorderAnim)}
+    onBlur={() => handleBlur(passwordBorderAnim)}
+  />
+
+  {/* 👁 Eye Icon */}
+  <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+    <MaterialCommunityIcons
+      name={showPassword ? 'eye-outline' : 'eye-off-outline'}
+      size={20}
+      color="#999"
+    />
+  </TouchableOpacity>
+</Animated.View>
+
+
+        {/* Confirm */}
+        <Text style={styles.label}>Confirm Password</Text>
+        <Animated.View style={[styles.inputBox, { borderColor: confirmPasswordBorderColor }]}>
+  <MaterialCommunityIcons name="lock-check-outline" size={20} color="#999" />
+
+  <TextInput
+    style={styles.input}
+    placeholder="Confirm new password"
+    secureTextEntry={!showConfirmPassword}
+    value={confirmPassword}
+    onChangeText={setConfirmPassword}
+    onFocus={() => handleFocus(confirmPasswordBorderAnim)}
+    onBlur={() => handleBlur(confirmPasswordBorderAnim)}
+  />
+
+  {/* 👁 Eye Icon */}
+  <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
+    <MaterialCommunityIcons
+      name={showConfirmPassword ? 'eye-outline' : 'eye-off-outline'}
+      size={20}
+      color="#999"
+    />
+  </TouchableOpacity>
+</Animated.View>
+
+
+        {/* Button */}
+        <TouchableOpacity
+          style={styles.primaryButton}
+          onPress={handleVerifyOtp}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#111" />
+          ) : (
+            <Text style={styles.primaryButtonText}>Set Password</Text>
+          )}
+        </TouchableOpacity>
+
+        {/* Resend */}
+        <TouchableOpacity style={styles.secondaryButton} onPress={handleResendOtp}>
+          <Text style={styles.secondaryButtonText}>Resend Code</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+  style={styles.backGhostBtn}
+  onPress={() => navigation.goBack()}
+>
+  <Text style={styles.backGhostText}>Back to Previous</Text>
+</TouchableOpacity>
+
+      </View>
+
+      {/* Footer */}
+      <Text style={styles.footer}>
+        Your password will be encrypted and stored securely
+      </Text>
+    </Animated.View>
+  </KeyboardAvoidingView>
+);
+
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'rgba(11, 8, 8, 1)',
+    backgroundColor: '#f5f5f5',
   },
-  scrollContainer: {
+  scroll: {
     flexGrow: 1,
     justifyContent: 'center',
     padding: 24,
   },
-  formContainer: {
-    backgroundColor: '#1a1a1a',
-    padding: 32,
-    borderRadius: 24,
-    shadowColor: '#e8c513e7',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 10,
-    borderWidth: 1,
-    borderColor: '#2a2a2a',
-  },
-  headerContainer: {
-    alignItems: 'center',
-    marginBottom: 28,
-  },
-  iconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#e8c513e7',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-    shadowColor: '#e8c513e7',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  iconText: {
-    fontSize: 42,
-    fontWeight: 'bold',
-    color: '#0b0808',
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    marginBottom: 8,
-    letterSpacing: 0.5,
-  },
+ header: {
+  alignItems: 'center',
+  marginBottom: 16,
+},
+ title: {
+  fontSize: 24,
+  fontWeight: 'bold',
+  color: '#111',
+},
   subtitle: {
-    fontSize: 14,
-    color: '#999',
-    textAlign: 'center',
-  },
-  infoCard: {
-    backgroundColor: '#2a2a2a',
-    padding: 18,
-    borderRadius: 14,
-    marginBottom: 28,
+  fontSize: 14,
+  color: '#666',
+  marginTop: 4,
+},
+  card: {
+  backgroundColor: '#fff',
+  borderRadius: 22,
+  padding: 22,
+  shadowColor: '#000',
+  shadowOpacity: 0.08,
+  shadowRadius: 12,
+  elevation: 6,
+},
+  infoSection: {
+    backgroundColor: '#fff3cd',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 20,
     borderLeftWidth: 4,
-    borderLeftColor: '#e8c513e7',
+    borderLeftColor: '#f9c107',
   },
   infoRow: {
     flexDirection: 'row',
@@ -513,67 +417,43 @@ const styles = StyleSheet.create({
   },
   infoLabel: {
     fontSize: 13,
-    color: '#999',
+    color: '#856404',
     fontWeight: '600',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
   },
   infoValue: {
     fontSize: 14,
-    color: '#e8c513e7',
+    color: '#111',
     fontWeight: '600',
   },
-  infoDivider: {
+  divider: {
     height: 1,
-    backgroundColor: '#333',
-    marginVertical: 12,
-  },
-  inputContainer: {
-    marginBottom: 22,
+    backgroundColor: '#f9c107',
+    marginVertical: 10,
+    opacity: 0.3,
   },
   label: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
-    marginBottom: 10,
-    color: '#e8c513e7',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
+    color: '#f9c107',
+    marginBottom: 6,
+    marginTop: 14,
   },
-  inputWrapper: {
+  inputBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 2,
+    backgroundColor: '#fff',
     borderRadius: 14,
-    backgroundColor: '#0b0808',
-    paddingHorizontal: 16,
-    height: 56,
-  },
-  inputIcon: {
-    fontSize: 20,
-    marginRight: 12,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    paddingHorizontal: 14,
+    height: 52,
   },
   input: {
     flex: 1,
-    fontSize: 16,
-    color: '#ffffff',
-    height: '100%',
-  },
-  eyeIcon: {
-    fontSize: 20,
-    padding: 4,
-  },
-  helperText: {
-    fontSize: 11,
-    color: '#999',
-    marginTop: 8,
-    lineHeight: 16,
-  },
-  strengthContainer: {
-    marginTop: 8,
-  },
-  strengthText: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 15,
+    color: '#111',
+    marginLeft: 10,
   },
   errorText: {
     fontSize: 12,
@@ -587,96 +467,88 @@ const styles = StyleSheet.create({
     marginTop: 6,
     fontWeight: '500',
   },
-  verifyButton: {
-    backgroundColor: '#e8c513e7',
-    padding: 18,
-    borderRadius: 14,
-    alignItems: 'center',
-    marginTop: 8,
-    marginBottom: 16,
-    shadowColor: '#e8c513e7',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  disabledButton: {
-    backgroundColor: '#4a4a4a',
-    shadowOpacity: 0.1,
-  },
-  buttonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  verifyButtonText: {
-    color: '#0b0808',
-    fontSize: 17,
-    fontWeight: 'bold',
-    letterSpacing: 0.5,
-  },
-  buttonIcon: {
-    color: '#0b0808',
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  loadingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  loadingText: {
-    color: '#0b0808',
-    fontSize: 16,
-    fontWeight: '600',
-    marginLeft: 8,
-  },
-  resendButton: {
-    flexDirection: 'row',
-    padding: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: '#2a2a2a',
-    backgroundColor: '#0b0808',
-    marginBottom: 12,
-  },
-  resendIcon: {
-    color: '#e8c513e7',
-    fontSize: 18,
-    marginRight: 8,
-    fontWeight: 'bold',
-  },
-  resendButtonText: {
-    color: '#e8c513e7',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  backButton: {
-    flexDirection: 'row',
-    padding: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  backButtonIcon: {
-    color: '#999',
-    fontSize: 18,
-    marginRight: 6,
-  },
-  backButtonText: {
-    color: '#999',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  footerText: {
-    textAlign: 'center',
-    color: '#666',
+  helperText: {
     fontSize: 11,
-    marginTop: 20,
-    letterSpacing: 0.3,
+    color: '#666',
+    marginTop: 6,
     lineHeight: 16,
   },
+  strengthContainer: {
+    marginTop: 8,
+  },
+  strengthText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  primaryButton: {
+    backgroundColor: '#f4c400',
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center',
+    marginTop: 26,
+  },
+  primaryButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#111',
+  },
+  secondaryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#f9c107',
+    backgroundColor: 'transparent',
+    marginTop: 12,
+  },
+  secondaryButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#f9c107',
+  },
+  linkBtn: {
+    marginTop: 18,
+    alignItems: 'center',
+  },
+  linkText: {
+    color: '#f9c107',
+    fontWeight: '600',
+  },
+  disabledButton: {
+    backgroundColor: '#ccc',
+  },
+  footer: {
+  textAlign: 'center',
+  fontSize: 12,
+  color: '#999',
+  marginTop: 20,
+},
+mainWrapper: {
+  flex: 1,
+  justifyContent: 'center',
+  paddingHorizontal: 24,
+},
+backGhostBtn: {
+  marginTop: 14,
+  paddingVertical: 10,
+  borderRadius: 12,
+  alignItems: 'center',
+  backgroundColor: '#fff',
+  borderWidth: 1,
+  borderColor: '#eee',
+},
+
+backGhostText: {
+  fontSize: 14,
+  color: '#777',
+  fontWeight: '600',
+},
+
 });
 
 export default VerifyOtpScreen;
+
+
+

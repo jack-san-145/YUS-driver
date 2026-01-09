@@ -14,6 +14,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { saveSession, clearSession } from '../utils/sessionUtils';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 const { width } = Dimensions.get('window');
 
@@ -60,7 +61,7 @@ const loginDriver = async (credentials) => {
       throw new Error("Invalid driver ID or password");
     }
   } catch (error) {
-    console.error('Error during driver login:', error);
+    console.log('Error during driver login:', error);
     throw error;
   }
 };
@@ -70,6 +71,7 @@ const LoginScreen = ({ navigation }) => {
   const [driverId, setDriverId] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -115,7 +117,7 @@ const LoginScreen = ({ navigation }) => {
         navigation.replace('HomeScreen');
       }
     } catch (error) {
-      console.error('Login error:', error);
+      console.log('Login error:', error);
       Alert.alert('Error', error.message || 'Failed to connect to server');
     } finally {
       setLoading(false);
@@ -133,255 +135,238 @@ const LoginScreen = ({ navigation }) => {
   });
 
   return (
-    <KeyboardAvoidingView 
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-        <Animated.View 
-          style={[
-            styles.formContainer,
-            { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
-          ]}
-        >
-          {/* Header */}
-          <View style={styles.headerContainer}>
-              <Text style={styles.iconText}>🚍</Text>
-            <Text style={styles.title}>YUS Driver</Text>
-            <Text style={styles.subtitle}>Sign in to continue</Text>
-          </View>
+    <KeyboardAvoidingView
+  style={styles.container}
+  behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+>
+  <ScrollView
+    contentContainerStyle={styles.scroll}
+    keyboardShouldPersistTaps="handled"
+  >
+    {/* Logo Section */}
+    <View style={styles.logoContainer}>
+      <Text style={styles.busIcon}>🚍</Text>
+      <Text style={styles.appTitle}>YUS Driver</Text>
+      <Text style={styles.appSubtitle}>Driver Login Portal</Text>
+    </View>
 
-          {/* Driver ID */}
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Driver ID</Text>
-            <Animated.View style={[styles.inputWrapper, { borderColor: driverIdBorderColor }]}>
-              <Text style={styles.inputIcon}>👤</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter your driver ID"
-                placeholderTextColor="#666"
-                value={driverId}
-                onChangeText={setDriverId}
-                keyboardType="numeric"
-                onFocus={() => handleFocus(driverIdBorderAnim)}
-                onBlur={() => handleBlur(driverIdBorderAnim)}
-              />
-            </Animated.View>
-          </View>
+    {/* Card */}
+    <View style={styles.card}>
+      <Text style={styles.cardTitle}>Driver Authentication</Text>
 
-          {/* Password */}
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Password</Text>
-            <Animated.View style={[styles.inputWrapper, { borderColor: passwordBorderColor }]}>
-              <Text style={styles.inputIcon}>🔒</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter your password"
-                placeholderTextColor="#666"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-                onFocus={() => handleFocus(passwordBorderAnim)}
-                onBlur={() => handleBlur(passwordBorderAnim)}
-              />
-            </Animated.View>
-          </View>
+      <Text style={styles.label}>DRIVER ID</Text>
 
-          {/* Login Button */}
-          <Animated.View style={{ transform: [{ scale: buttonScaleAnim }] }}>
-            <TouchableOpacity
-              style={[styles.loginButton, loading && styles.disabledButton]}
-              onPress={handleLogin}
-              disabled={loading}
-              activeOpacity={0.8}
-            >
-              {loading ? (
-                <View style={styles.loadingContainer}>
-                  <ActivityIndicator color="#0b0808" size="small" />
-                  <Text style={styles.loadingText}>Signing in...</Text>
-                </View>
-              ) : (
-                <Text style={styles.loginButtonText}>Sign In</Text>
-              )}
-            </TouchableOpacity>
-          </Animated.View>
+<View style={styles.inputBox}>
+  <MaterialCommunityIcons
+    name="account-outline"
+    size={22}
+    color="#999"
+    style={styles.leftIcon}
+  />
 
-          {/* Divider */}
-          <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>OR</Text>
-            <View style={styles.dividerLine} />
-          </View>
+  <TextInput
+    placeholder="Enter your driver ID"
+    value={driverId}
+    onChangeText={setDriverId}
+    keyboardType="numeric"
+    style={styles.input}
+  />
+</View>
 
-          {/* Set Password */}
-          <TouchableOpacity
-            style={styles.setPasswordButton}
-            onPress={() => navigation.navigate('SendOtp')}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.setPasswordText}>Create New Password</Text>
-            <Text style={styles.setPasswordIcon}>→</Text>
-          </TouchableOpacity>
 
-          {/* Footer */}
-          <Text style={styles.footerText}>Secure login powered by YUS</Text>
-        </Animated.View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      <Text style={styles.label}>PASSWORD</Text>
+
+<View style={styles.passwordBox}>
+  <MaterialCommunityIcons
+    name="lock-outline"
+    size={22}
+    color="#999"
+    style={styles.leftIcon}
+  />
+
+  <TextInput
+    placeholder="Enter your password"
+    value={password}
+    onChangeText={setPassword}
+    secureTextEntry={!showPassword}
+    style={styles.passwordInput}
+  />
+
+  <TouchableOpacity
+    onPress={() => setShowPassword(prev => !prev)}
+    activeOpacity={0.7}
+  >
+    <MaterialCommunityIcons
+      name={showPassword ? 'eye-outline' : 'eye-off-outline'}
+      size={22}
+      color="#999"
+    />
+  </TouchableOpacity>
+</View>
+
+      {/* Login Button */}
+      <TouchableOpacity
+        style={styles.loginButton}
+        onPress={handleLogin}
+        disabled={loading}
+      >
+        {loading ? (
+          <ActivityIndicator color="#000" />
+        ) : (
+          <Text style={styles.loginText}>Login</Text>
+        )}
+      </TouchableOpacity>
+
+      {/* Create Password */}
+      <TouchableOpacity
+        onPress={() => navigation.navigate('SendOtp')}
+        style={styles.linkBtn}
+      >
+        <Text style={styles.linkText}>Create New Password</Text>
+      </TouchableOpacity>
+    </View>
+
+    <Text style={styles.footer}>
+      © 2024 YUS Bus Management System
+    </Text>
+  </ScrollView>
+</KeyboardAvoidingView>
+
   );
 };
 
-const styles = StyleSheet.create({ 
-  container: { 
-    flex: 1, 
-    backgroundColor: 'rgba(11, 8, 8, 1)', 
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
   },
-  scrollContainer: { 
-    flexGrow: 1, 
-    justifyContent: 'center', 
-    padding: 24, 
-  }, 
-  formContainer: { 
-    backgroundColor: '#1a1a1a', 
-    padding: 32, 
-    borderRadius: 24, 
-    shadowColor: '#e8c513e7', 
-    shadowOffset: { width: 0, height: 8 }, 
-    shadowOpacity: 0.15, 
-    shadowRadius: 16, 
-    elevation: 10, 
-    borderWidth: 1, 
-    borderColor: '#2a2a2a', 
-  }, 
-  headerContainer: { 
-    alignItems: 'center', 
-    marginBottom: 36, 
-  }, 
-  
-  iconText: { 
-    fontSize: 36, 
-  }, 
-  title: { 
-    fontSize: 28, 
-    fontWeight: 'bold', 
-    color: '#ffffff', 
-    marginBottom: 8, 
-    letterSpacing: 0.5, 
-  }, 
-  subtitle: { 
-    fontSize: 15, 
-    color: '#999', 
-    letterSpacing: 0.3, 
-  }, 
-  inputContainer: { 
-    marginBottom: 24, 
-  }, 
-  label: { 
-    fontSize: 14, 
-    fontWeight: '600', 
-    marginBottom: 10, 
-    color: '#e8c513e7', 
-    letterSpacing: 0.5, 
-    textTransform: 'uppercase', 
-  }, 
-  inputWrapper: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    borderWidth: 2, 
-    borderRadius: 14, 
-    backgroundColor: '#0b0808', 
-    paddingHorizontal: 16, 
-    height: 56, 
-  }, 
-  inputIcon: { 
-    fontSize: 20, 
-    marginRight: 12, 
-  }, 
-  input: { 
-    flex: 1, 
-    fontSize: 16, 
-    color: '#ffffff', 
-    height: '100%', 
-  }, 
-  loginButton: { 
-    backgroundColor: '#e8c513e7', 
-    padding: 18, 
-    borderRadius: 14, 
-    alignItems: 'center', 
-    marginTop: 8, 
-    shadowColor: '#e8c513e7', 
-    shadowOffset: { width: 0, height: 4 }, 
-    shadowOpacity: 0.4, 
-    shadowRadius: 8, 
-    elevation: 6, 
-  }, 
-  disabledButton: { 
-    backgroundColor: '#4a4a4a', 
-    shadowOpacity: 0.1, 
-  }, 
-  loginButtonText: { 
-    color: '#0b0808', 
-    fontSize: 17, 
-    fontWeight: 'bold', 
-    letterSpacing: 1, 
-    textTransform: 'uppercase', 
-  }, 
-  loadingContainer: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    gap: 10, 
-  }, 
-  loadingText: { 
-    color: '#0b0808', 
-    fontSize: 16, 
-    fontWeight: '600', 
-    marginLeft: 8, 
-  }, 
-  divider: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    marginVertical: 28, 
-  }, 
-  dividerLine: { 
-    flex: 1, 
-    height: 1, 
-    backgroundColor: '#2a2a2a', 
-  }, 
-  dividerText: { 
-    color: '#666', 
-    paddingHorizontal: 16, 
-    fontSize: 13, 
-    fontWeight: '600', 
-  }, 
-  setPasswordButton: { 
-    flexDirection: 'row', 
-    padding: 16, 
-    alignItems: 'center', 
-    justifyContent: 'center', 
-    borderRadius: 14, 
-    borderWidth: 2, 
-    borderColor: '#2a2a2a', 
-    backgroundColor: '#0b0808', 
-  }, 
-  setPasswordText: { 
-    color: '#e8c513e7', 
-    fontSize: 16, 
-    fontWeight: '600', 
-    marginRight: 8, 
-  }, 
-  setPasswordIcon: { 
-    color: '#e8c513e7', 
-    fontSize: 20, 
-    fontWeight: 'bold', 
-  }, 
-  footerText: { 
-    textAlign: 'center', 
-    color: '#666', 
-    fontSize: 12, 
-    marginTop: 24, 
-    letterSpacing: 0.5, 
-  }, 
-}); 
+  scroll: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    padding: 24,
+  },
+
+ logoContainer: {
+  alignItems: 'center',
+  marginTop: -90,   
+  marginBottom: 20,
+},
+
+  busIcon: {
+    fontSize: 48,
+    marginBottom: 10,
+  },
+  appTitle: {
+    fontSize: 26,
+    fontWeight: 'bold',
+    color: '#111',
+  },
+  appSubtitle: {
+    fontSize: 14,
+    color: '#f4c400',
+    marginTop: 4,
+  },
+
+  card: {
+    backgroundColor: '#f9f9f9',
+    borderRadius: 20,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 20,
+    color: '#111',
+  },
+
+  label: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#f9c107',
+    marginBottom: 6,
+    marginTop: 14,
+  },
+
+ inputBox: {
+  flexDirection: 'row',      
+  alignItems: 'center',        
+  backgroundColor: '#fff',
+  borderRadius: 12,
+  borderWidth: 1,
+  borderColor: '#ddd',
+  paddingHorizontal: 14,
+  height: 50,
+},
+
+
+  input: {
+    fontSize: 15,
+    color: '#111',
+  },
+
+  loginButton: {
+    backgroundColor: '#f4c400',
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center',
+    marginTop: 26,
+  },
+
+  loginText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#111',
+  },
+
+  linkBtn: {
+    marginTop: 18,
+    alignItems: 'center',
+  },
+  linkText: {
+    color: '#f4c400',
+    fontWeight: '600',
+  },
+
+  footer: {
+    textAlign: 'center',
+    fontSize: 12,
+    color: '#aaa',
+    marginTop: 30,
+  },
+
+  passwordBox: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  backgroundColor: '#fff',
+  borderRadius: 12,
+  borderWidth: 1,
+  borderColor: '#ddd',
+  paddingHorizontal: 14,
+  height: 50,
+},
+
+passwordInput: {
+  flex: 1,
+  fontSize: 15,
+  color: '#111',
+},
+
+eyeIcon: {
+  fontSize: 18,
+  color: '#777',
+  paddingLeft: 10,
+},
+leftIcon: {
+  marginRight: 10,
+},
+
+
+});
 
 export { loginDriver, clearSession };
 export default LoginScreen;

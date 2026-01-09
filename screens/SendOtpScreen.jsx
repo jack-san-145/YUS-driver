@@ -12,12 +12,21 @@ import {
   Platform,
   Animated,
 } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+
+// Common Auth Header Component
+const AuthHeader = ({ title, subtitle }) => (
+  <View style={styles.header}>
+    <MaterialCommunityIcons name="bus" size={48} color="#f9c107" />
+    <Text style={styles.title}>{title}</Text>
+    <Text style={styles.subtitle}>{subtitle}</Text>
+  </View>
+);
 
 const SendOtpScreen = ({ navigation }) => {
   const [driverId, setDriverId] = useState('');
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
-  const [focusedInput, setFocusedInput] = useState(null);
 
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -42,36 +51,16 @@ const SendOtpScreen = ({ navigation }) => {
     ]).start();
   }, []);
 
-  const handleDriverIdFocus = () => {
-    setFocusedInput('driverId');
-    Animated.timing(driverIdBorderAnim, {
+  const handleFocus = (inputAnim) => {
+    Animated.timing(inputAnim, {
       toValue: 1,
       duration: 200,
       useNativeDriver: false,
     }).start();
   };
 
-  const handleDriverIdBlur = () => {
-    setFocusedInput(null);
-    Animated.timing(driverIdBorderAnim, {
-      toValue: 0,
-      duration: 200,
-      useNativeDriver: false,
-    }).start();
-  };
-
-  const handleEmailFocus = () => {
-    setFocusedInput('email');
-    Animated.timing(emailBorderAnim, {
-      toValue: 1,
-      duration: 200,
-      useNativeDriver: false,
-    }).start();
-  };
-
-  const handleEmailBlur = () => {
-    setFocusedInput(null);
-    Animated.timing(emailBorderAnim, {
+  const handleBlur = (inputAnim) => {
+    Animated.timing(inputAnim, {
       toValue: 0,
       duration: 200,
       useNativeDriver: false,
@@ -115,9 +104,7 @@ const SendOtpScreen = ({ navigation }) => {
 
       const response = await fetch('https://yus.kwscloud.in/yus/send-otp-driver-password', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: formBody.toString(),
       });
 
@@ -127,15 +114,12 @@ const SendOtpScreen = ({ navigation }) => {
         Alert.alert('Error', 'No driver found with this ID and email');
       } else if (data.otp_sent === true) {
         Alert.alert('Success', 'OTP sent successfully!');
-        navigation.navigate('VerifyOtp', {
-          driverId: driverId,
-          email: email,
-        });
+        navigation.navigate('VerifyOtp', { driverId, email });
       } else {
         Alert.alert('Error', 'Failed to send OTP. Please try again.');
       }
     } catch (error) {
-      console.error('Send OTP error:', error);
+      console.log('Send OTP error:', error);
       Alert.alert('Error', 'Failed to connect to server');
     } finally {
       setLoading(false);
@@ -144,134 +128,113 @@ const SendOtpScreen = ({ navigation }) => {
 
   const driverIdBorderColor = driverIdBorderAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ['#2a2a2a', '#e8c513e7'],
+    outputRange: ['#ddd', '#f9c107'],
   });
 
   const emailBorderColor = emailBorderAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ['#2a2a2a', '#e8c513e7'],
+    outputRange: ['#ddd', '#f9c107'],
   });
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <ScrollView 
-        contentContainerStyle={styles.scrollContainer}
-        showsVerticalScrollIndicator={false}
-      >
-        <Animated.View 
-          style={[
-            styles.formContainer,
-            {
-              opacity: fadeAnim,
-              transform: [{ translateY: slideAnim }],
-            },
-          ]}
-        >
-          {/* Header Section */}
-          <View style={styles.headerContainer}>
-            <View style={styles.iconCircle}>
-              <Text style={styles.iconText}>🔐</Text>
-            </View>
-            <Text style={styles.title}>Password Setup</Text>
-            <Text style={styles.subtitle}>
-              We'll send a verification code to your email
-            </Text>
-          </View>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
           
-          {/* Driver ID Input */}
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Driver ID</Text>
-            <Animated.View 
-              style={[
-                styles.inputWrapper,
-                { borderColor: driverIdBorderColor }
-              ]}
-            >
-              <Text style={styles.inputIcon}>👤</Text>
+          {/* Header */}
+          <AuthHeader
+            title="Password Setup"
+            subtitle="We'll send a verification code"
+          />
+
+          {/* Card */}
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Verify Driver</Text>
+
+            {/* Driver ID */}
+            <Text style={styles.label}>DRIVER ID</Text>
+            <Animated.View style={[styles.inputBox, { borderColor: driverIdBorderColor }]}>
+              <MaterialCommunityIcons 
+                name="account-outline" 
+                size={22} 
+                color="#999" 
+              />
               <TextInput
                 style={styles.input}
-                placeholder="Enter your driver ID"
-                placeholderTextColor="#666"
+                placeholder="Enter driver ID"
+                placeholderTextColor="#999"
                 value={driverId}
                 onChangeText={setDriverId}
                 keyboardType="numeric"
-                onFocus={handleDriverIdFocus}
-                onBlur={handleDriverIdBlur}
+                onFocus={() => handleFocus(driverIdBorderAnim)}
+                onBlur={() => handleBlur(driverIdBorderAnim)}
               />
             </Animated.View>
-          </View>
 
-          {/* Email Input */}
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Email Address</Text>
-            <Animated.View 
-              style={[
-                styles.inputWrapper,
-                { borderColor: emailBorderColor }
-              ]}
-            >
-              <Text style={styles.inputIcon}>📧</Text>
+            {/* Email */}
+            <Text style={styles.label}>EMAIL</Text>
+            <Animated.View style={[styles.inputBox, { borderColor: emailBorderColor }]}>
+              <MaterialCommunityIcons 
+                name="email-outline" 
+                size={22} 
+                color="#999" 
+              />
               <TextInput
                 style={styles.input}
-                placeholder="Enter your email"
-                placeholderTextColor="#666"
+                placeholder="Enter registered email"
+                placeholderTextColor="#999"
                 value={email}
                 onChangeText={setEmail}
                 keyboardType="email-address"
                 autoCapitalize="none"
-                onFocus={handleEmailFocus}
-                onBlur={handleEmailBlur}
+                onFocus={() => handleFocus(emailBorderAnim)}
+                onBlur={() => handleBlur(emailBorderAnim)}
               />
             </Animated.View>
-          </View>
 
-          {/* Info Box */}
-          <View style={styles.infoBox}>
-            <Text style={styles.infoIcon}>ℹ️</Text>
-            <Text style={styles.infoText}>
-              Make sure to enter the email registered with your driver account
-            </Text>
-          </View>
+            {/* Info Box */}
+            <View style={styles.infoBox}>
+              <MaterialCommunityIcons 
+                name="information-outline" 
+                size={16} 
+                color="#f9c107" 
+                style={{ marginRight: 8 }}
+              />
+              <Text style={styles.infoText}>
+                Make sure to enter the email registered with your driver account
+              </Text>
+            </View>
 
-          {/* Send OTP Button */}
-          <Animated.View style={{ transform: [{ scale: buttonScaleAnim }] }}>
-            <TouchableOpacity
-              style={[styles.sendOtpButton, loading && styles.disabledButton]}
-              onPress={handleSendOtp}
-              disabled={loading}
-              activeOpacity={0.8}
+            {/* Send OTP Button */}
+            <Animated.View style={{ transform: [{ scale: buttonScaleAnim }] }}>
+              <TouchableOpacity
+                style={[styles.primaryButton, loading && styles.disabledButton]}
+                onPress={handleSendOtp}
+                disabled={loading}
+                activeOpacity={0.8}
+              >
+                {loading ? (
+                  <ActivityIndicator size="small" color="#111" />
+                ) : (
+                  <Text style={styles.primaryButtonText}>Send OTP</Text>
+                )}
+              </TouchableOpacity>
+            </Animated.View>
+
+            {/* Back Button */}
+            <TouchableOpacity 
+              style={styles.linkBtn} 
+              onPress={() => navigation.goBack()}
             >
-              {loading ? (
-                <View style={styles.loadingContainer}>
-                  <ActivityIndicator color="#0b0808" size="small" />
-                  <Text style={styles.loadingText}>Sending OTP...</Text>
-                </View>
-              ) : (
-                <View style={styles.buttonContent}>
-                  <Text style={styles.sendOtpButtonText}>Send Verification Code</Text>
-                  <Text style={styles.buttonIcon}>→</Text>
-                </View>
-              )}
+              <Text style={styles.linkText}>Back to Login</Text>
             </TouchableOpacity>
-          </Animated.View>
-
-          {/* Back Button */}
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.backButtonIcon}>←</Text>
-            <Text style={styles.backButtonText}>Back to Login</Text>
-          </TouchableOpacity>
+          </View>
 
           {/* Footer */}
-          <Text style={styles.footerText}>
-            Protected by YUS Security
-          </Text>
+          <Text style={styles.footer}>Protected by YUS Security</Text>
         </Animated.View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -281,179 +244,109 @@ const SendOtpScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'rgba(11, 8, 8, 1)',
+    backgroundColor: '#f5f5f5',
   },
-  scrollContainer: {
+  scroll: {
     flexGrow: 1,
     justifyContent: 'center',
     padding: 24,
   },
-  formContainer: {
-    backgroundColor: '#1a1a1a',
-    padding: 32,
-    borderRadius: 24,
-    shadowColor: '#e8c513e7',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 10,
-    borderWidth: 1,
-    borderColor: '#2a2a2a',
-  },
-  headerContainer: {
+  header: {
     alignItems: 'center',
-    marginBottom: 36,
-  },
-  iconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#e8c513e7',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-    shadowColor: '#e8c513e7',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  iconText: {
-    fontSize: 36,
+    marginBottom: 24,
   },
   title: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: 'bold',
-    color: '#ffffff',
-    marginBottom: 8,
-    letterSpacing: 0.5,
+    color: '#111',
+    marginTop: 10,
   },
   subtitle: {
     fontSize: 14,
-    color: '#999',
-    textAlign: 'center',
-    lineHeight: 20,
-    paddingHorizontal: 20,
+    color: '#666',
+    marginTop: 4,
   },
-  inputContainer: {
-    marginBottom: 24,
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 22,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 20,
+    color: '#111',
   },
   label: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
-    marginBottom: 10,
-    color: '#e8c513e7',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
+    color: '#f9c107',
+    marginBottom: 6,
+    marginTop: 14,
   },
-  inputWrapper: {
+  inputBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 2,
+    backgroundColor: '#fff',
     borderRadius: 14,
-    backgroundColor: '#0b0808',
-    paddingHorizontal: 16,
-    height: 56,
-  },
-  inputIcon: {
-    fontSize: 20,
-    marginRight: 12,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    paddingHorizontal: 14,
+    height: 52,
   },
   input: {
     flex: 1,
-    fontSize: 16,
-    color: '#ffffff',
-    height: '100%',
+    fontSize: 15,
+    color: '#111',
+    marginLeft: 10,
   },
   infoBox: {
     flexDirection: 'row',
-    backgroundColor: '#2a2a2a',
-    padding: 14,
+    backgroundColor: '#fff3cd',
+    padding: 12,
     borderRadius: 12,
-    marginBottom: 24,
-    borderLeftWidth: 3,
-    borderLeftColor: '#e8c513e7',
-  },
-  infoIcon: {
-    fontSize: 16,
-    marginRight: 10,
+    marginTop: 20,
+    borderLeftWidth: 4,
+    borderLeftColor: '#f9c107',
+    alignItems: 'center',
   },
   infoText: {
     flex: 1,
     fontSize: 13,
-    color: '#ccc',
-    lineHeight: 18,
+    color: '#856404',
   },
-  sendOtpButton: {
-    backgroundColor: '#e8c513e7',
-    padding: 18,
+  primaryButton: {
+    backgroundColor: '#f4c400',
+    paddingVertical: 14,
     borderRadius: 14,
     alignItems: 'center',
-    marginBottom: 20,
-    shadowColor: '#e8c513e7',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 6,
+    marginTop: 26,
+  },
+  primaryButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#111',
   },
   disabledButton: {
-    backgroundColor: '#4a4a4a',
-    shadowOpacity: 0.1,
+    backgroundColor: '#ccc',
   },
-  buttonContent: {
-    flexDirection: 'row',
+  linkBtn: {
+    marginTop: 18,
     alignItems: 'center',
-    gap: 8,
   },
-  sendOtpButtonText: {
-    color: '#0b0808',
-    fontSize: 16,
-    fontWeight: 'bold',
-    letterSpacing: 0.5,
-  },
-  buttonIcon: {
-    color: '#0b0808',
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  loadingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  loadingText: {
-    color: '#0b0808',
-    fontSize: 16,
-    fontWeight: '600',
-    marginLeft: 8,
-  },
-  backButton: {
-    flexDirection: 'row',
-    padding: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: '#2a2a2a',
-    backgroundColor: '#0b0808',
-  },
-  backButtonIcon: {
-    color: '#e8c513e7',
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginRight: 8,
-  },
-  backButtonText: {
-    color: '#e8c513e7',
-    fontSize: 16,
+  linkText: {
+    color: '#f9c107',
     fontWeight: '600',
   },
-  footerText: {
+  footer: {
     textAlign: 'center',
-    color: '#666',
     fontSize: 12,
-    marginTop: 24,
-    letterSpacing: 0.5,
+    color: '#999',
+    marginTop: 30,
   },
 });
 

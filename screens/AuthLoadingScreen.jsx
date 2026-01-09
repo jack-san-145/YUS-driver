@@ -13,7 +13,7 @@ export default function AuthLoadingScreen({ navigation }) {
           navigation.replace('LoginScreen');
         }
       } catch (error) {
-        console.error('Error checking session:', error);
+        console.log('Error checking session:', error);
         navigation.replace('LoginScreen');
       }
     };

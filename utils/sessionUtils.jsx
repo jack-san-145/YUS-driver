@@ -18,7 +18,7 @@ export const saveSession = async (sessionId) => {
     console.log('✅ Session saved successfully');
     return true;
   } catch (error) {
-    console.error('❌ Error saving session:', error);
+    console.log('❌ Error saving session:', error);
     throw error;
   }
 };
@@ -36,14 +36,14 @@ export const getSession = async () => {
     
     // Validate session structure
     if (!session.session_id || !session.createdAt) {
-      console.error('❌ Invalid session structure');
+      console.log('❌ Invalid session structure');
       await SecureStore.deleteItemAsync('driverSession');
       return null;
     }
     
     return session;
   } catch (error) {
-    console.error('❌ Error parsing session:', error);
+    console.log('❌ Error parsing session:', error);
     // Clear corrupted session
     await SecureStore.deleteItemAsync('driverSession');
     return null;
@@ -56,7 +56,7 @@ export const getSessionId = async () => {
     const session = await getSession();
     return session ? session.session_id : null;
   } catch (error) {
-    console.error('❌ Error getting session ID:', error);
+    console.log('❌ Error getting session ID:', error);
     return null;
   }
 };
@@ -77,7 +77,7 @@ export const validateSession = async () => {
     console.log('✅ Session still valid');
     return true;
   } catch (error) {
-    console.error('❌ Error validating session:', error);
+    console.log('❌ Error validating session:', error);
     return false;
   }
 };
@@ -89,7 +89,7 @@ export const clearSession = async () => {
     console.log('✅ Session cleared successfully');
     return true;
   } catch (error) {
-    console.error('❌ Error clearing session:', error);
+    console.log('❌ Error clearing session:', error);
     throw error;
   }
 };

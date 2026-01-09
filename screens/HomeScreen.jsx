@@ -10,13 +10,16 @@ import {
   StatusBar,
   Alert,
   ScrollView,
-  Platform,
-  Linking,
+  Modal,
 } from 'react-native';
 import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
 import * as SecureStore from 'expo-secure-store';
 import { w3cwebsocket as W3CWebSocket } from 'websocket';
+import { Ionicons, MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
+import * as Linking from 'expo-linking';
+
+
 
 
 const { width, height } = Dimensions.get('window');
@@ -44,11 +47,10 @@ const clearSession = async () => {
 
 // ----------------- Background Location Task -----------------
 TaskManager.defineTask(LOCATION_TASK_NAME, ({ data, error }) => {
-  if (error) return console.error('Background location task error:', error);
+  if (error) return console.log('Background location task error:', error);
   if (data) {
     const { locations } = data;
     console.log('Background locations:', locations);
-    // Send locations via WebSocket
     if (global.wsClient && global.wsClient.readyState === 1) {
       locations.forEach(loc => {
         global.wsClient.send(JSON.stringify({
@@ -68,6 +70,7 @@ const HomeScreen = ({ navigation }) => {
   const [busData, setBusData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isWebSocketConnected, setIsWebSocketConnected] = useState(false);
+  const [drawerVisible, setDrawerVisible] = useState(false);
 
   const subscriptionRef = useRef(null);
   const reconnectTimeoutRef = useRef(null);
@@ -78,52 +81,154 @@ const HomeScreen = ({ navigation }) => {
   const speedometerAnim = useRef(new Animated.Value(0)).current;
   const dashboardSlideAnim = useRef(new Animated.Value(50)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const drawerAnim = useRef(new Animated.Value(-width * 0.75)).current;
+
+  // ----------------- Drawer Functions -----------------
+  const openDrawer = () => {
+    setDrawerVisible(true);
+    Animated.timing(drawerAnim, {
+      toValue: 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const closeDrawer = () => {
+    Animated.timing(drawerAnim, {
+      toValue: -width * 0.75,
+      duration: 300,
+      useNativeDriver: true,
+    }).start(() => setDrawerVisible(false));
+  };
+
+  const handleDrawerItemPress = (item) => {
+    closeDrawer();
+    setTimeout(() => {
+      switch(item) {
+        case 'home':
+          // Already on home
+          break;
+       case 'about':
+  Linking.openURL('https://yus.kwscloud.in/');
+  break;
+
+
+
+        case 'privacy':
+  Linking.openURL('https://jack-san-145.github.io/yus-privacy-policy/');
+  break;
+
+       case 'deletion':
+  handleAccountDeletionRequest();
+  break;
+
+        case 'logout':
+          handleLogout();
+          break;
+      }
+    }, 300);
+  };
+
+  const handleAccountDeletionRequest = async () => {
+  Alert.alert(
+    'Confirm Account Deletion',
+    'This will send a request to the admin to remove your account. You can continue using the app until the admin approves it.',
+    [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Request Deletion',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            const sessionId = await getSessionId();
+            if (!sessionId) {
+              navigation.replace('LoginScreen');
+              return;
+            }
+
+            const response = await fetch(
+              'https://yus.kwscloud.in/yus/remove-driver-account',
+              {
+                method: 'DELETE',
+                headers: {
+                  Authorization: sessionId,
+                },
+              }
+            );
+
+            const result = await response.json();
+            console.log('Account deletion request response:', result);
+
+            if (result.status) {
+              Alert.alert(
+                'Request Sent',
+                'Your account deletion request has been sent to the admin. You will be notified once it is reviewed.'
+              );
+            } else {
+              Alert.alert(
+                'Request Failed',
+                'Deletion request already exists or could not be processed.'
+              );
+            }
+
+          } catch (err) {
+            console.log('Deletion request error:', err);
+            Alert.alert(
+              'Network Error',
+              'Unable to send deletion request. Please try again later.'
+            );
+          }
+        },
+      },
+    ]
+  );
+};
+
 
   // ----------------- WebSocket -----------------
   const initializeWebSocket = async () => {
-  try {
-    const sessionId = await getSessionId();
-    if (!sessionId) {
-      navigation.replace('LoginScreen');
-      return;
+    try {
+      const sessionId = await getSessionId();
+      if (!sessionId) {
+        navigation.replace('LoginScreen');
+        return;
+      }
+
+      const ws = new W3CWebSocket(`wss://yus.kwscloud.in/yus/driver-ws?session_id=${sessionId}`);
+
+      ws.onopen = () => {
+        console.log('✅ WebSocket connected');
+        global.wsClient = ws;
+        setIsWebSocketConnected(true);
+        if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
+      };
+
+      ws.onclose = (event) => {
+        console.log('⚠ WebSocket disconnected:', event.code);
+        setIsWebSocketConnected(false);
+        initializeWebSocket()
+        // if (sharing) {
+        //   reconnectTimeoutRef.current = setTimeout(() => initializeWebSocket(), 3000);
+        // }
+      };
+
+      ws.onerror = (error) => {
+        console.log('❌ WebSocket error:', error);
+        setIsWebSocketConnected(false);
+      };
+
+      ws.onmessage = (message) => {
+        try {
+          const data = JSON.parse(message.data);
+          console.log('Received message:', data);
+        } catch {
+          console.log('Raw message:', message.data);
+        }
+      };
+    } catch (err) {
+      console.log('WebSocket initialization failed:', err);
     }
-
-    // Append session_id as query parameter
-    const ws = new W3CWebSocket(`wss://yus.kwscloud.in/yus/driver-ws?session_id=${sessionId}`);
-
-    ws.onopen = () => {
-      console.log('✅ WebSocket connected');
-      global.wsClient = ws;
-      setIsWebSocketConnected(true);
-      if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
-    };
-
-    ws.onclose = (event) => {
-      console.log('⚠ WebSocket disconnected:', event.code);
-      setIsWebSocketConnected(false);
-      if (sharing) {
-        reconnectTimeoutRef.current = setTimeout(() => initializeWebSocket(), 3000);
-      }
-    };
-
-    ws.onerror = (error) => {
-      console.error('❌ WebSocket error:', error);
-      setIsWebSocketConnected(false);
-    };
-
-    ws.onmessage = (message) => {
-      try {
-        const data = JSON.parse(message.data);
-        console.log('Received message:', data);
-      } catch {
-        console.log('Raw message:', message.data);
-      }
-    };
-  } catch (err) {
-    console.error('WebSocket initialization failed:', err);
-  }
-};
-
+  };
 
   // ----------------- Fetch Bus -----------------
   const fetchAllottedBus = async () => {
@@ -142,7 +247,7 @@ const HomeScreen = ({ navigation }) => {
       const data = await response.json();
       setBusData(data);
     } catch (err) {
-      console.error(err);
+      console.log(err);
       Alert.alert('Error', 'Failed to load bus details.', [
         { text: 'Retry', onPress: fetchAllottedBus },
       ]);
@@ -151,115 +256,120 @@ const HomeScreen = ({ navigation }) => {
     }
   };
 
-  // ----------------- Send Location -----------------
-  const sendLocation = (loc) => {
-    if (global.wsClient && global.wsClient.readyState === 1) {
-      global.wsClient.send(JSON.stringify(loc));
-    } else {
-      if (sharing) initializeWebSocket();
+  // ----------------- Start / Stop Sharing -----------------
+  const toggleSharing = async () => {
+    if (sharing) {
+      if (subscriptionRef.current) {
+        subscriptionRef.current.remove();
+        subscriptionRef.current = null;
+      }
+      await Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
+      setSharing(false);
+      setLocation(null);
+      return;
     }
+
+    const { status: fgStatus } = await Location.requestForegroundPermissionsAsync();
+    if (fgStatus !== 'granted') return Alert.alert('Enable location permissions');
+
+    const { status: bgStatus } = await Location.requestBackgroundPermissionsAsync();
+    if (bgStatus !== 'granted') return Alert.alert('Enable background location');
+
+    const sub = await Location.watchPositionAsync(
+      {
+        accuracy: Location.Accuracy.High,
+        timeInterval: 5000,
+        distanceInterval: 0,
+      },
+      (loc) => {
+        setLocation(loc);
+        if (busData && global.wsClient && global.wsClient.readyState === 1) {
+          global.wsClient.send(JSON.stringify({
+            latitude: loc.coords.latitude.toFixed(6),
+            longitude: loc.coords.longitude.toFixed(6),
+            speed: loc.coords.speed.toFixed(2),
+          }));
+        }
+      }
+    );
+    subscriptionRef.current = sub;
+
+    await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
+      accuracy: Location.Accuracy.High,
+      timeInterval: 5000,
+      distanceInterval: 0,
+      showsBackgroundLocationIndicator: true,
+      foregroundService: {
+        notificationTitle: 'Drive Tracker',
+        notificationBody: 'Sharing your location in the background',
+        notificationColor: '#4CAF50',
+      },
+    });
+
+    setSharing(true);
   };
 
-
-
-  // ----------------- Start / Stop Sharing -----------------
-const toggleSharing = async () => {
-  if (sharing) {
-    // Stop foreground tracking
-    if (subscriptionRef.current) {
-      subscriptionRef.current.remove();
-      subscriptionRef.current = null;
-    }
-
-    // Stop background tracking
-    await Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
-
-    setSharing(false);
-    setLocation(null);
-    return;
-  }
-
-  // ----------------- Request Permissions -----------------
-  const { status: fgStatus } = await Location.requestForegroundPermissionsAsync();
-  if (fgStatus !== 'granted') return Alert.alert('Enable location permissions');
-
-  const { status: bgStatus } = await Location.requestBackgroundPermissionsAsync();
-  if (bgStatus !== 'granted') return Alert.alert('Enable background location');
-
-  // ----------------- Start Foreground Tracking -----------------
-  const sub = await Location.watchPositionAsync(
-    {
-      accuracy: Location.Accuracy.High,
-      timeInterval: 5000,  // 5 seconds
-      distanceInterval: 0, // send even if not moved
-    },
-    (loc) => {
-      setLocation(loc);
-
-      if (busData && global.wsClient && global.wsClient.readyState === 1) {
-        global.wsClient.send(JSON.stringify({
-          latitude: loc.coords.latitude.toFixed(6),
-          longitude: loc.coords.longitude.toFixed(6),
-          speed: loc.coords.speed.toFixed(2),
-        }));
-      }
-    }
-  );
-  subscriptionRef.current = sub;
-
-  // ----------------- Start Background Tracking -----------------
-  await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
-    accuracy: Location.Accuracy.High,
-    timeInterval: 5000,  // 5 seconds
-    distanceInterval: 0, // even if stationary
-    showsBackgroundLocationIndicator: true,
-    foregroundService: {
-      notificationTitle: 'Drive Tracker',
-      notificationBody: 'Sharing your location in the background',
-      notificationColor: '#4CAF50',
-    },
-  });
-
-  setSharing(true);
-};
-
-
   // ----------------- Logout -----------------
-const handleLogout = async () => {
+ const handleLogout = async () => {
   console.log("logout triggered");
 
   try {
-    // Remove subscription
-    if (subscriptionRef.current) {
-      subscriptionRef.current.remove();
-      subscriptionRef.current = null;
-      console.log("Location subscription removed");
+    const sessionId = await getSessionId();
+    if (!sessionId) {
+      navigation.replace('LoginScreen');
+      return;
     }
 
-    // Stop background location task safely
-    try {
-      await Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
-      console.log("Location updates stopped");
-    } catch (err) {
-      console.log("No location task to stop, continuing logout");
+    // 🔹 Call backend logout API
+    const response = await fetch(
+      'https://yus.kwscloud.in/yus/driver-logout',
+      {
+        method: 'DELETE',
+        headers: {
+          Authorization: sessionId,
+        },
+      }
+    );
+
+    const result = await response.json();
+    console.log('Logout API response:', result);
+
+    if (!result.status) {
+      Alert.alert(
+        'Logout Failed',
+        'Server logout failed. You will be logged out locally.'
+      );
     }
 
-    // Close websocket
-    if (global.wsClient) {
-      global.wsClient.close();
-      global.wsClient = null;
-      console.log("WebSocket closed");
-    }
-
-    // Clear session
-    await clearSession();
-    console.log("Session cleared");
-
-    // Navigate to login
-    navigation.replace('LoginScreen');
-    console.log("Navigation done");
   } catch (err) {
-    console.log("Logout failed:", err);
+    console.log('Logout API error:', err);
+    Alert.alert(
+      'Network Error',
+      'Unable to reach server. Logging out locally.'
+    );
+  } finally {
+    // 🔹 Always clean up locally
+    try {
+      if (subscriptionRef.current) {
+        subscriptionRef.current.remove();
+        subscriptionRef.current = null;
+      }
+
+      try {
+        await Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
+      } catch {}
+
+      if (global.wsClient) {
+        global.wsClient.close();
+        global.wsClient = null;
+      }
+
+      await clearSession();
+      navigation.replace('LoginScreen');
+
+    } catch (cleanupErr) {
+      console.log('Cleanup error:', cleanupErr);
+    }
   }
 };
 
@@ -278,7 +388,6 @@ const handleLogout = async () => {
 
   // ----------------- Animations -----------------
   useEffect(() => {
-    // Initial dashboard slide-in animation
     Animated.parallel([
       Animated.timing(dashboardSlideAnim, {
         toValue: 0,
@@ -295,7 +404,6 @@ const handleLogout = async () => {
 
   useEffect(() => {
     if (sharing) {
-      // Start pulsing animation
       const pulseAnimation = Animated.loop(
         Animated.sequence([
           Animated.timing(pulseAnim, {
@@ -312,7 +420,6 @@ const handleLogout = async () => {
       );
       pulseAnimation.start();
 
-      // Car moving animation
       const carAnimation = Animated.loop(
         Animated.timing(carMoveAnim, {
           toValue: 1,
@@ -322,7 +429,6 @@ const handleLogout = async () => {
       );
       carAnimation.start();
 
-      // Speedometer animation
       Animated.timing(speedometerAnim, {
         toValue: 1,
         duration: 1500,
@@ -334,7 +440,6 @@ const handleLogout = async () => {
         carAnimation.stop();
       };
     } else {
-      // Reset animations when stopped
       Animated.parallel([
         Animated.timing(speedometerAnim, {
           toValue: 0,
@@ -379,16 +484,98 @@ const handleLogout = async () => {
 
   return (
     <View style={styles.container}>
-    
-     
+      <StatusBar barStyle="light-content" backgroundColor="#0a0a0a" />
+
+      {/* Drawer Modal */}
+      <Modal
+        visible={drawerVisible}
+        transparent
+        animationType="none"
+        onRequestClose={closeDrawer}
+      >
+        <View style={styles.drawerOverlay}>
+          <TouchableOpacity 
+            style={styles.drawerBackdrop} 
+            activeOpacity={1} 
+            onPress={closeDrawer}
+          />
+          <Animated.View 
+            style={[
+              styles.drawerContainer,
+              { transform: [{ translateX: drawerAnim }] }
+            ]}
+          >
+            <View style={styles.drawerHeader}>
+              <View style={styles.drawerTitleContainer}>
+                <Ionicons name="bus" size={28} color="#64b5f6" style={styles.drawerTitleIcon} />
+                <Text style={styles.drawerTitle}>YUS DRIVER</Text>
+              </View>
+              <TouchableOpacity onPress={closeDrawer} style={styles.closeButton}>
+                <Ionicons name="close" size={28} color="#fff" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.drawerContent}>
+              <TouchableOpacity 
+                style={styles.drawerItem} 
+                onPress={() => handleDrawerItemPress('home')}
+              >
+                <Ionicons name="home" size={24} color="#64b5f6" style={styles.drawerItemIcon} />
+                <Text style={styles.drawerItemText}>Home</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.drawerItem} 
+                onPress={() => handleDrawerItemPress('about')}
+              >
+                <Ionicons name="information-circle" size={24} color="#64b5f6" style={styles.drawerItemIcon} />
+                <Text style={styles.drawerItemText}>About</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.drawerItem} 
+                onPress={() => handleDrawerItemPress('privacy')}
+              >
+                <MaterialIcons name="privacy-tip" size={24} color="#64b5f6" style={styles.drawerItemIcon} />
+                <Text style={styles.drawerItemText}>Privacy Policy</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.drawerItem} 
+                onPress={() => handleDrawerItemPress('deletion')}
+              >
+                <MaterialIcons name="delete" size={24} color="#64b5f6" style={styles.drawerItemIcon} />
+                <Text style={styles.drawerItemText}>Account Deletion Request</Text>
+              </TouchableOpacity>
+
+              <View style={styles.drawerDivider} />
+
+              <TouchableOpacity 
+                style={[styles.drawerItem, styles.logoutItem]} 
+                onPress={() => handleDrawerItemPress('logout')}
+              >
+                <Ionicons name="log-out" size={24} color="#f44336" style={styles.drawerItemIcon} />
+                <Text style={[styles.drawerItemText, styles.logoutText]}>Logout</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.drawerFooter}>
+              <Text style={styles.drawerFooterText}>Version 1.0</Text>
+              <Text style={styles.drawerFooterText}>Yelloh Bus Services</Text>
+            </View>
+          </Animated.View>
+        </View>
+      </Modal>
 
       {/* ScrollView with dashboard */}
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-       
-          {/* Logout */}
-          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-            <Text style={styles.logoutText}>Logout</Text>
-          </TouchableOpacity>
+        {/* Hamburger Menu Button inside ScrollView */}
+        <TouchableOpacity style={styles.hamburgerButton} onPress={openDrawer}>
+          <View style={styles.hamburgerLine} />
+          <View style={styles.hamburgerLine} />
+          <View style={styles.hamburgerLine} />
+        </TouchableOpacity>
+
         <Animated.View 
           style={[
             styles.dashboard,
@@ -398,13 +585,9 @@ const handleLogout = async () => {
             }
           ]}
         >
-
-
-
-
           {/* Header with bus icon */}
           <View style={styles.headerContainer}>
-            <Text style={styles.headerTitle}>YUS TRACKER</Text>
+            <Text style={styles.headerTitle}>YUS DRIVER</Text>
             <Text style={styles.headerSubtitle}>Yelloh Bus Location Sharing</Text>
           </View>
 
@@ -477,35 +660,33 @@ const handleLogout = async () => {
             
             {location ? (
               <View style={styles.coordinatesContainer}>
-          <View style={styles.coordinateRow}>
-            <Text style={styles.coordinateLabel}>LAT</Text>
-            <Text style={styles.coordinateValue}>
-              {location?.coords?.latitude != null
-                ? location.coords.latitude.toFixed(6) + '°'
+                <View style={styles.coordinateRow}>
+                  <Text style={styles.coordinateLabel}>LAT</Text>
+                  <Text style={styles.coordinateValue}>
+                    {location?.coords?.latitude != null
+                      ? location.coords.latitude.toFixed(6) + '°'
+                      : '-'}
+                  </Text>
+                </View>
 
-                : '-'}
-            </Text>
-          </View>
+                <View style={styles.coordinateRow}>
+                  <Text style={styles.coordinateLabel}>LNG</Text>
+                  <Text style={styles.coordinateValue}>
+                    {location?.coords?.longitude != null
+                      ? location.coords.longitude.toFixed(6) + '°'
+                      : '-'}
+                  </Text>
+                </View>
 
-          <View style={styles.coordinateRow}>
-            <Text style={styles.coordinateLabel}>LNG</Text>
-            <Text style={styles.coordinateValue}>
-              {location?.coords?.longitude != null
-                ? location.coords.longitude.toFixed(6) + '°'
-                : '-'}
-            </Text>
-          </View>
-
-          <View style={styles.coordinateRow}>
-            <Text style={styles.coordinateLabel}>SPD</Text>
-            <Text style={styles.coordinateValue}>
-              {typeof location?.coords?.speed === 'number'
-                ? (location.coords.speed * 3.6).toFixed(1) + ' km/h'
-                : '-'}
-            </Text>
-          </View>
-        </View>
-
+                <View style={styles.coordinateRow}>
+                  <Text style={styles.coordinateLabel}>SPD</Text>
+                  <Text style={styles.coordinateValue}>
+                    {typeof location?.coords?.speed === 'number'
+                      ? (location.coords.speed * 3.6).toFixed(1) + ' km/h'
+                      : '-'}
+                  </Text>
+                </View>
+              </View>
             ) : (
               <Text style={styles.noLocationText}>
                 {sharing ? 'Acquiring GPS signal...' : 'Location tracking disabled'}
@@ -547,10 +728,11 @@ const handleLogout = async () => {
     </View>
   );
 }
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000', // full black
+    backgroundColor: '#000',
   },
 
   backgroundGradient: {
@@ -561,13 +743,121 @@ const styles = StyleSheet.create({
     bottom: 0,
   },
 
+  hamburgerButton: {
+    padding: 10,
+    backgroundColor: '#111',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#333',
+    alignSelf: 'flex-start',
+    marginBottom: 20,
+  },
+  hamburgerLine: {
+    width: 25,
+    height: 3,
+    backgroundColor: '#64b5f6',
+    marginVertical: 3,
+    borderRadius: 2,
+  },
+
+  drawerOverlay: {
+    flex: 1,
+    flexDirection: 'row',
+  },
+  drawerBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+ drawerContainer: {
+  position: 'absolute',  // make it absolute
+  top: 0,
+  left: 0,               // fix it to left
+  width: width * 0.75,
+  height: '100%',
+  backgroundColor: '#111',
+  borderRightWidth: 1,
+  borderRightColor: '#333',
+},
+
+  drawerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    paddingTop: 60,
+    backgroundColor: '#1a1a1a',
+    borderBottomWidth: 1,
+    borderBottomColor: '#333',
+  },
+  drawerTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  drawerTitleIcon: {
+    marginRight: 10,
+  },
+  drawerTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#64b5f6',
+    letterSpacing: 1,
+  },
+  closeButton: {
+    padding: 5,
+  },
+  drawerContent: {
+    flex: 1,
+    paddingTop: 20,
+  },
+  drawerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 18,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#222',
+  },
+  drawerItemIcon: {
+    marginRight: 15,
+    width: 30,
+    textAlign: 'center',
+  },
+  drawerItemText: {
+    fontSize: 16,
+    color: '#fff',
+    fontWeight: '500',
+  },
+  drawerDivider: {
+    height: 1,
+    backgroundColor: '#333',
+    marginVertical: 15,
+  },
+  logoutItem: {
+    marginTop: 10,
+  },
+  logoutText: {
+    color: '#f44336',
+  },
+  drawerFooter: {
+    padding: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#333',
+    alignItems: 'center',
+  },
+  drawerFooterText: {
+    fontSize: 12,
+    color: '#666',
+    marginVertical: 2,
+  },
+
   scrollView: {
     flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
     paddingBottom: 50,
-    paddingTop: 100, // Added padding for logout button space
+    paddingTop: 50,
+    paddingHorizontal: 20,
   },
 
   loadingContainer: {
@@ -587,34 +877,13 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
 
-  logoutButton: {
-    position: 'absolute', // Keep absolute but will be inside ScrollView
-    top: 60,
-    right: 20,
-    backgroundColor: '#f44336',
-    padding: 12,
-    borderRadius: 10,
-    zIndex: 1000,
-  },
-  logoutText: {
-    color: '#fff',
-    fontWeight: 'bold',
-  },
-
   dashboard: {
     flex: 1,
-    padding: 20,
-    paddingTop: 10, // Reduced since scrollContent has top padding
-    backgroundColor: '#000',
   },
 
   headerContainer: {
     alignItems: 'center',
     marginBottom: 30,
-  },
-  headerEmoji: {
-    fontSize: 40,
-    marginBottom: 10,
   },
   headerTitle: {
     fontSize: 28,
@@ -624,7 +893,7 @@ const styles = StyleSheet.create({
   },
   headerSubtitle: {
     fontSize: 14,
-    color: '#64b5f6', // subtle blue tint like in image 1
+    color: '#64b5f6',
     marginTop: 5,
     letterSpacing: 1,
   },
@@ -709,18 +978,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 20,
   },
-  connectedDot: {
+  statusDot: {
     width: 12,
     height: 12,
     borderRadius: 6,
     marginRight: 8,
+  },
+  connectedDot: {
     backgroundColor: '#4CAF50',
   },
   disconnectedDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginRight: 8,
     backgroundColor: '#ff9800',
   },
 
@@ -746,6 +1013,9 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  coordinatesContainer: {
+    marginTop: 10,
   },
   coordinateRow: {
     flexDirection: 'row',
@@ -788,6 +1058,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  buttonIcon: {
+    fontSize: 24,
+    marginRight: 10,
+  },
   buttonText: {
     color: '#fff',
     fontSize: 18,
@@ -798,12 +1072,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  statusDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginRight: 8,
   },
   activeDot: {
     backgroundColor: '#4CAF50',
@@ -816,24 +1084,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
   },
-
-  bottomNavigation: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    backgroundColor: '#000', // Changed from blue to black
-    paddingVertical: 15,
-    borderTopWidth: 1,
-    borderTopColor: '#333',
-  },
-  navItem: {
-    alignItems: 'center',
-  },
-  navText: {
-    color: '#fff',
-    fontSize: 14,
-    marginTop: 5,
-  },
 });
-export default HomeScreen;
 
+export default HomeScreen;
