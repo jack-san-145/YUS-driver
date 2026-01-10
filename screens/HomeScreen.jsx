@@ -115,7 +115,7 @@ const HomeScreen = ({ navigation }) => {
 
 
         case 'privacy':
-  Linking.openURL('https://jack-san-145.github.io/yus-privacy-policy/');
+  Linking.openURL('https://yus.kwscloud.in/yus/privacy-policy');
   break;
 
        case 'deletion':
