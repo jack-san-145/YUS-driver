@@ -507,7 +507,7 @@ const HomeScreen = ({ navigation }) => {
           >
             <View style={styles.drawerHeader}>
               <View style={styles.drawerTitleContainer}>
-                <Ionicons name="bus" size={28} color="#64b5f6" style={styles.drawerTitleIcon} />
+                <Ionicons name="bus" size={28} color="#edae25ff" style={styles.drawerTitleIcon} />
                 <Text style={styles.drawerTitle}>YUS DRIVER</Text>
               </View>
               <TouchableOpacity onPress={closeDrawer} style={styles.closeButton}>
@@ -520,7 +520,7 @@ const HomeScreen = ({ navigation }) => {
                 style={styles.drawerItem} 
                 onPress={() => handleDrawerItemPress('home')}
               >
-                <Ionicons name="home" size={24} color="#64b5f6" style={styles.drawerItemIcon} />
+                <Ionicons name="home" size={24} color="#edae25ff" style={styles.drawerItemIcon} />
                 <Text style={styles.drawerItemText}>Home</Text>
               </TouchableOpacity>
 
@@ -528,7 +528,7 @@ const HomeScreen = ({ navigation }) => {
                 style={styles.drawerItem} 
                 onPress={() => handleDrawerItemPress('about')}
               >
-                <Ionicons name="information-circle" size={24} color="#64b5f6" style={styles.drawerItemIcon} />
+                <Ionicons name="information-circle" size={24} color="#edae25ff" style={styles.drawerItemIcon} />
                 <Text style={styles.drawerItemText}>About</Text>
               </TouchableOpacity>
 
@@ -536,7 +536,7 @@ const HomeScreen = ({ navigation }) => {
                 style={styles.drawerItem} 
                 onPress={() => handleDrawerItemPress('privacy')}
               >
-                <MaterialIcons name="privacy-tip" size={24} color="#64b5f6" style={styles.drawerItemIcon} />
+                <MaterialIcons name="privacy-tip" size={24} color="#edae25ff" style={styles.drawerItemIcon} />
                 <Text style={styles.drawerItemText}>Privacy Policy</Text>
               </TouchableOpacity>
 
@@ -544,7 +544,7 @@ const HomeScreen = ({ navigation }) => {
                 style={styles.drawerItem} 
                 onPress={() => handleDrawerItemPress('deletion')}
               >
-                <MaterialIcons name="delete" size={24} color="#64b5f6" style={styles.drawerItemIcon} />
+                <MaterialIcons name="delete" size={24} color="#edae25ff" style={styles.drawerItemIcon} />
                 <Text style={styles.drawerItemText}>Account Deletion Request</Text>
               </TouchableOpacity>
 
@@ -755,7 +755,7 @@ const styles = StyleSheet.create({
   hamburgerLine: {
     width: 25,
     height: 3,
-    backgroundColor: '#64b5f6',
+    backgroundColor: '#edae25ff',
     marginVertical: 3,
     borderRadius: 2,
   },
@@ -799,7 +799,7 @@ const styles = StyleSheet.create({
   drawerTitle: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#64b5f6',
+    color: '#edae25ff',
     letterSpacing: 1,
   },
   closeButton: {
@@ -893,7 +893,7 @@ const styles = StyleSheet.create({
   },
   headerSubtitle: {
     fontSize: 14,
-    color: '#64b5f6',
+    color: '#edae25ff',
     marginTop: 5,
     letterSpacing: 1,
   },
@@ -915,7 +915,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#222',
   },
   busDetailLabel: {
-    color: '#64b5f6',
+    color: '#edae25ff',
     fontSize: 14,
     fontWeight: 'bold',
   },
@@ -951,7 +951,7 @@ const styles = StyleSheet.create({
     height: 60,
     borderRadius: 60,
     borderWidth: 3,
-    borderColor: '#64b5f6',
+    borderColor: '#edae25ff',
     borderBottomColor: 'transparent',
     position: 'relative',
     alignItems: 'center',
@@ -967,7 +967,7 @@ const styles = StyleSheet.create({
     transformOrigin: 'center bottom',
   },
   speedometerText: {
-    color: '#64b5f6',
+    color: '#edae25ff',
     fontSize: 12,
     fontWeight: 'bold',
   },
@@ -1007,7 +1007,7 @@ const styles = StyleSheet.create({
   locationIcon: {
     fontSize: 20,
     marginRight: 10,
-    color: '#64b5f6',
+    color: '#edae25ff',
   },
   locationTitle: {
     color: '#fff',
